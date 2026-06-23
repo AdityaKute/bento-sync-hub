@@ -193,7 +193,7 @@ function Dashboard() {
           <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">Your document slots</h2>
           <p className="text-sm text-muted-foreground">Upload up to 6 files. Each file is limited to 1.5 MB.</p>
           <p className="mt-1 inline-flex items-center rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-xs font-medium text-muted-foreground">
-            Accepted formats: JPG, PNG, PDF, DOC, DOCX, TXT, CSV, XLS, XLSX, PPT, PPTX.
+            Accepted formats: JPG, PNG, JPEG.
           </p>
         </div>
         <Button variant="ghost" size="sm" onClick={() => void refresh()} disabled={loading}>
