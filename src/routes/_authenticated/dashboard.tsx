@@ -26,7 +26,7 @@ const SLOT_CLASSES: Record<number, string> = {
 };
 const MAX_FILE_SIZE = 1_500_000;
 const STORAGE_BUCKET = "user-uploads";
-const ALLOWED_FILES = /\.(jpg|jpeg|png|pdf|doc|docx|txt|csv|xls|xlsx|ppt|pptx)$/i;
+const ALLOWED_FILES = /\.(jpg|jpeg|png)$/i;
 const ALLOWED_MIME = new Set([
   "image/jpeg",
   "image/png",
