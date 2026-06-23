@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { CheckCircle2, Download, Loader2, Package, XCircle } from "lucide-react";
+import { CheckCircle2, Download, Loader2, Package, Trash2, XCircle } from "lucide-react";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,6 +42,7 @@ function Admin() {
   const [rows, setRows] = useState<DashboardRow[] | null>(adminData?.rows ?? null);
   const [downloadingAll, setDownloadingAll] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [deletingAll, setDeletingAll] = useState(false);
 
   const isAllowedAdmin =
     user?.email?.toLowerCase() === "admin@gmail.com" &&
@@ -171,6 +172,48 @@ function Admin() {
     }
   };
 
+  const deleteAllUsers = async () => {
+    if (!rows || rows.length === 0) return;
+    if (!window.confirm(`Delete all fetched users and their uploaded files? This cannot be undone.`)) {
+      return;
+    }
+
+    setDeletingAll(true);
+
+    try {
+      const filePaths = rows
+        .flatMap((row) => SLOTS.map((slot) => row[`file_${slot}_url` as const]))
+        .filter(Boolean) as string[];
+
+      if (filePaths.length > 0) {
+        const { error: deleteStorageError } = await supabase.storage.from(STORAGE_BUCKET).remove(filePaths);
+        if (deleteStorageError) throw deleteStorageError;
+      }
+
+      const ids = rows.map((row) => row.id);
+
+      if (ids.length > 0) {
+        const { error: deleteUserFilesError } = await supabase.from("user_files").delete().in("profile_id", ids);
+        if (deleteUserFilesError) {
+          const message = deleteUserFilesError.message ?? "";
+          if (!/does not exist|column|undefined/i.test(message)) {
+            throw deleteUserFilesError;
+          }
+        }
+
+        const { error: deleteProfilesError } = await supabase.from("profiles").delete().in("id", ids);
+        if (deleteProfilesError) throw deleteProfilesError;
+      }
+
+      toast.success("Deleted all fetched users and linked files.");
+      await refresh();
+    } catch (error: any) {
+      toast.error(error?.message ?? "Unable to delete all users");
+    } finally {
+      setDeletingAll(false);
+    }
+  };
+
   const effectiveRows = rows ?? [];
   const totalUploaded = effectiveRows.reduce(
     (sum, row) => sum + SLOTS.filter((slot) => !!row[`file_${slot}_url` as const]).length,
@@ -207,14 +250,25 @@ function Admin() {
               <h2 className="text-lg font-semibold">User management</h2>
               <p className="text-xs text-muted-foreground">{effectiveRows.length} registered users</p>
             </div>
-            <Button
-              onClick={() => void downloadAllZip()}
-              disabled={downloadingAll || effectiveRows.length === 0}
-              className="bg-green-100 text-green-800 hover:bg-green-200"
-            >
-              {downloadingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Package className="mr-2 h-4 w-4" />}
-              Download All
-            </Button>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                onClick={() => void downloadAllZip()}
+                disabled={downloadingAll || effectiveRows.length === 0}
+                className="bg-green-100 text-green-800 hover:bg-green-200"
+              >
+                {downloadingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Package className="mr-2 h-4 w-4" />}
+                Download All
+              </Button>
+              <Button
+                onClick={() => void deleteAllUsers()}
+                disabled={downloadingAll || deletingAll || effectiveRows.length === 0}
+                className="border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800"
+              >
+                {deletingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                Delete All
+              </Button>
+            </div>
           </div>
 
           <div className="hidden overflow-x-auto md:block">
@@ -232,7 +286,7 @@ function Admin() {
                 {rows === null
                   ? Array.from({ length: 3 }).map((_, i) => (
                       <TableRow key={i}>
-                        <TableCell colSpan={8}><Skeleton className="h-6 w-full" /></TableCell>
+                        <TableCell colSpan={9}><Skeleton className="h-6 w-full" /></TableCell>
                       </TableRow>
                     ))
                   : effectiveRows.map((row) => (
@@ -269,7 +323,7 @@ function Admin() {
                       </TableRow>
                     ))}
                 {rows !== null && effectiveRows.length === 0 && (
-                  <TableRow><TableCell colSpan={8} className="text-center text-sm text-muted-foreground">No users yet.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={8} className="text-center text-sm text-muted-foreground">No users yet.</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
@@ -286,25 +340,27 @@ function Admin() {
               const uploadedCount = SLOTS.filter((slot) => !!row[`file_${slot}_url` as const]).length;
               return (
                 <div key={row.id} className="rounded-xl border border-border/60 bg-background/40 p-4">
-                  <div className="mb-3 flex items-center justify-between gap-2">
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold">{row.email}</p>
                       <p className="text-xs text-muted-foreground">{uploadedCount} / 6 files uploaded</p>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="h-9 shrink-0"
-                      disabled={downloadingId === row.id || uploadedCount === 0}
-                      onClick={() => void downloadUserZip(row)}
-                    >
-                      {downloadingId === row.id ? (
-                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Download className="mr-1.5 h-3.5 w-3.5" />
-                      )}
-                      Download
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="h-9 shrink-0"
+                        disabled={downloadingId === row.id || uploadedCount === 0}
+                        onClick={() => void downloadUserZip(row)}
+                      >
+                        {downloadingId === row.id ? (
+                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Download className="mr-1.5 h-3.5 w-3.5" />
+                        )}
+                        Download
+                      </Button>
+                    </div>
                   </div>
                   <div className="grid grid-cols-6 gap-1.5" role="list" aria-label={`File status for ${row.email}`}>
                     {SLOTS.map((slot) => {
