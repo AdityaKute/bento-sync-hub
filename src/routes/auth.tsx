@@ -23,7 +23,7 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const navigate = useNavigate();
   const { session, profile, loading, profileLoading } = useAuth();
-  const [tab, setTab] = useState<"login" | "register" | "forgot">("login");
+  const [tab, setTab] = useState<"login" | "register">("login");
   const [busy, setBusy] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
@@ -98,11 +98,10 @@ function AuthPage() {
           <p className="mt-1 text-sm text-muted-foreground">Sign in or create an account to continue.</p>
         </div>
         <Card className="glass p-6">
-          <Tabs value={tab} onValueChange={(v) => setTab(v as "login" | "register" | "forgot")}>
-            <TabsList className="grid w-full grid-cols-3">
+          <Tabs value={tab} onValueChange={(v) => setTab(v as "login" | "register")}>
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">Login</TabsTrigger>
               <TabsTrigger value="register">Register</TabsTrigger>
-              <TabsTrigger value="forgot">Forgot</TabsTrigger>
             </TabsList>
 
             <TabsContent value="login" className="mt-5">
