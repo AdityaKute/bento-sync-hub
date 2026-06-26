@@ -1,6 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -54,7 +57,7 @@ type UserFilesRow = {
 };
 
 function Dashboard() {
-  const { user, profile, profileLoading } = useAuth();
+  const { user, profile, profileLoading, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [row, setRow] = useState<UserFilesRow | null>(null);
   const [loading, setLoading] = useState(true);
@@ -62,6 +65,9 @@ function Dashboard() {
   const [previews, setPreviews] = useState<Record<number, string>>({});
   const [signed, setSigned] = useState<Record<number, string>>({});
   const [saving, setSaving] = useState(false);
+  const [nameDialogOpen, setNameDialogOpen] = useState(false);
+  const [newDisplayName, setNewDisplayName] = useState(profile?.display_name ?? "");
+  const [updatingName, setUpdatingName] = useState(false);
 
   const isAllowedAdmin =
     user?.email?.toLowerCase() === "admin@gmail.com" &&
@@ -110,6 +116,36 @@ function Dashboard() {
       void refresh();
     }
   }, [user]);
+
+  useEffect(() => {
+    setNewDisplayName(profile?.display_name ?? "");
+  }, [profile?.display_name]);
+
+  const handleUpdateDisplayName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    if (!newDisplayName.trim()) {
+      toast.error("Please enter a valid display name.");
+      return;
+    }
+
+    setUpdatingName(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ display_name: newDisplayName.trim() })
+        .eq("id", user.id);
+
+      if (error) throw error;
+      toast.success("Display name updated successfully.");
+      setNameDialogOpen(false);
+      await refreshProfile();
+    } catch (error: any) {
+      toast.error(error.message ?? "Unable to update display name.");
+    } finally {
+      setUpdatingName(false);
+    }
+  };
 
   const hasPending = Object.keys(pending).length > 0;
   const uploadedSlots = useMemo(() => {
@@ -186,7 +222,40 @@ function Dashboard() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-4 pb-32 sm:p-6">
-      <AppHeader subtitle="Personal vault" />
+      <AppHeader
+        subtitle="Personal vault"
+        action={
+          <Dialog open={nameDialogOpen} onOpenChange={setNameDialogOpen}>
+            <Button size="sm" variant="secondary" onClick={() => setNameDialogOpen(true)}>
+              Update Name
+            </Button>
+            <DialogContent className="glass max-w-sm">
+              <DialogHeader>
+                <DialogTitle>Update display name</DialogTitle>
+                <DialogDescription>Enter your full name as Last Name, First Name, Middle Name.</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleUpdateDisplayName} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="display-name">Display Name</Label>
+                  <Input
+                    id="display-name"
+                    placeholder="Last Name, First Name, Middle Name"
+                    value={newDisplayName}
+                    onChange={(e) => setNewDisplayName(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                <DialogFooter>
+                  <Button type="submit" className="w-full" disabled={updatingName}>
+                    {updatingName ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Update
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        }
+      />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>

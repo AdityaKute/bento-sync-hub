@@ -69,6 +69,7 @@ function Admin() {
       .select(`
         id,
         email,
+        display_name,
         role,
         user_files (
           file_1_url,
@@ -97,6 +98,7 @@ function Admin() {
         return {
           id: profile.id,
           email: profile.email,
+          display_name: profile.display_name ?? null,
           role: profile.role === "admin" ? "admin" : "user",
           file_1_url: uf.file_1_url ?? null,
           file_2_url: uf.file_2_url ?? null,
@@ -121,7 +123,9 @@ function Admin() {
     setDownloadingId(row.id);
     try {
       const zip = new JSZip();
-      const folder = zip.folder(row.email.replace(/@.*/, "")) ?? zip;
+      const displayLabel = row.display_name?.trim() || row.email.replace(/@.*/, "") || "user";
+      const folderName = displayLabel.replace(/[^a-zA-Z0-9 _-]+/g, "_");
+      const folder = zip.folder(folderName) ?? zip;
 
       for (const slot of SLOTS) {
         const key = `file_${slot}_url` as const;
@@ -134,8 +138,8 @@ function Admin() {
       }
 
       const blob = await zip.generateAsync({ type: "blob" });
-      saveAs(blob, `${row.email.replace(/@.*/, "")}_files.zip`);
-      toast.success(`Downloaded ${row.email}'s files`);
+      saveAs(blob, `${folderName}_files.zip`);
+      toast.success(`Downloaded ${displayLabel}'s files`);
     } catch (error: any) {
       toast.error(error.message ?? "Download failed");
     } finally {
@@ -151,7 +155,9 @@ function Admin() {
       for (const row of rows) {
         const hasAny = SLOTS.some((slot) => !!row[`file_${slot}_url` as const]);
         if (!hasAny) continue;
-        const folder = zip.folder(row.email.replace(/@.*/, "")) ?? zip;
+        const displayLabel = row.display_name?.trim() || row.email.replace(/@.*/, "") || "user";
+        const folderName = displayLabel.replace(/[^a-zA-Z0-9 _-]+/g, "_");
+        const folder = zip.folder(folderName) ?? zip;
         for (const slot of SLOTS) {
           const key = `file_${slot}_url` as const;
           const path = row[key];
@@ -291,7 +297,7 @@ function Admin() {
                     ))
                   : effectiveRows.map((row) => (
                       <TableRow key={row.id}>
-                        <TableCell className="font-medium">{row.email}</TableCell>
+                        <TableCell className="font-medium">{row.display_name?.trim() || row.email || "No name provided"}</TableCell>
                         {SLOTS.map((slot) => {
                           const key = `file_${slot}_url` as const;
                           const hasFile = !!row[key];
@@ -342,7 +348,7 @@ function Admin() {
                 <div key={row.id} className="rounded-xl border border-border/60 bg-background/40 p-4">
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold">{row.email}</p>
+                      <p className="truncate text-sm font-semibold">{row.display_name?.trim() || row.email || "No name provided"}</p>
                       <p className="text-xs text-muted-foreground">{uploadedCount} / 6 files uploaded</p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -362,7 +368,10 @@ function Admin() {
                       </Button>
                     </div>
                   </div>
-                  <div className="grid grid-cols-6 gap-1.5" role="list" aria-label={`File status for ${row.email}`}>
+                  <div
+                    className="grid grid-cols-6 gap-1.5"
+                    role="list"
+                    aria-label={`File status for ${row.display_name?.trim() || row.email || "user"}`}>
                     {SLOTS.map((slot) => {
                       const key = `file_${slot}_url` as const;
                       const hasFile = !!row[key];

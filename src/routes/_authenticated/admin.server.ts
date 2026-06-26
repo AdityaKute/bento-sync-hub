@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 export type AdminRow = {
   id: string;
   email: string;
+  display_name: string | null;
   role: "user" | "admin";
   file_1_url: string | null;
   file_2_url: string | null;
@@ -28,6 +29,7 @@ export async function loadAdminData(): Promise<AdminLoaderData> {
     .select(`
       id,
       email,
+      display_name,
       role,
       user_files (
         file_1_url,
@@ -55,6 +57,7 @@ export async function loadAdminData(): Promise<AdminLoaderData> {
       return {
         id: profile.id,
         email: profile.email,
+        display_name: profile.display_name ?? null,
         role: profile.role === "admin" ? "admin" : "user",
         file_1_url: uf.file_1_url ?? null,
         file_2_url: uf.file_2_url ?? null,

@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { LogOut, Shield, User as UserIcon } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useNavigate } from "@tanstack/react-router";
 
-export function AppHeader({ subtitle }: { subtitle?: string }) {
+export function AppHeader({ subtitle, action }: { subtitle?: string; action?: ReactNode }) {
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -18,11 +18,13 @@ export function AppHeader({ subtitle }: { subtitle?: string }) {
         <div className="min-w-0">
           <p className="truncate text-sm text-muted-foreground">{subtitle ?? "Workspace"}</p>
           <h1 className="truncate text-base font-semibold sm:text-lg">
-            Welcome, <span className="text-primary">{profile?.email ?? "…"}</span>
+            Welcome, <span className="text-primary">{profile?.display_name ?? profile?.email ?? "…"}</span>
           </h1>
         </div>
       </div>
-      <Button
+      <div className="flex items-center gap-2">
+        {action}
+        <Button
         size="sm"
         variant="outline"
         className="border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800"

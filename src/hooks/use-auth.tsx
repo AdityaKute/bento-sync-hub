@@ -7,6 +7,7 @@ export type Profile = {
   email: string;
   role: "user" | "admin";
   created_at: string;
+  display_name?: string | null;
 };
 
 type AuthCtx = {
@@ -42,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, email, role, created_at")
+        .select("id, email, role, created_at, display_name")
         .eq("id", uid)
         .maybeSingle();
 
@@ -52,6 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const normalizedProfile: Profile = {
           ...(data as Profile),
           role: (data.role === "admin" || isAdmin) ? "admin" : "user",
+          display_name: data.display_name ?? null,
         };
 
         if (normalizedProfile.role !== data.role) {
@@ -67,6 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const { data: userData } = await supabase.auth.getUser();
       const email = userData?.user?.email ?? "";
+      const display_name = userData?.user?.user_metadata?.display_name ?? null;
 
       const { error: upsertError } = await supabase
         .from("profiles")
@@ -75,6 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             id: uid,
             email,
             role,
+            display_name,
           },
           { onConflict: "id" },
         );

@@ -25,6 +25,7 @@ function AuthPage() {
   const { session, profile, loading, profileLoading } = useAuth();
   const [tab, setTab] = useState<"login" | "register" | "forgot">("login");
   const [busy, setBusy] = useState(false);
+  const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -70,6 +71,9 @@ function AuthPage() {
       password,
       options: {
         emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/auth` : undefined,
+        data: {
+          display_name: displayName,
+        },
       },
     });
     setBusy(false);
@@ -82,23 +86,6 @@ function AuthPage() {
     toast.success("Account created. Please check your email to confirm.");
   };
 
-  const handleForgotPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
-
-    setBusy(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: typeof window !== "undefined" ? `${window.location.origin}/auth` : undefined,
-    });
-    setBusy(false);
-
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-
-    toast.success("Password reset email sent.");
-  };
 
   return (
     <div className="grid min-h-screen place-items-center px-4 py-10">
@@ -137,6 +124,16 @@ function AuthPage() {
             <TabsContent value="register" className="mt-5">
               <form onSubmit={handleRegister} className="space-y-4">
                 <div className="space-y-2">
+                  <Label htmlFor="rdn">Display Name</Label>
+                  <Input
+                    id="rdn"
+                    type="text"
+                    placeholder="Last Name, First Name, Middle Name"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="re">Email</Label>
                   <Input id="re" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
                 </div>
@@ -146,18 +143,6 @@ function AuthPage() {
                 </div>
                 <Button type="submit" disabled={busy} className="w-full">
                   {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Create account
-                </Button>
-              </form>
-            </TabsContent>
-
-            <TabsContent value="forgot" className="mt-5">
-              <form onSubmit={handleForgotPassword} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="rf">Email</Label>
-                  <Input id="rf" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
-                </div>
-                <Button type="submit" disabled={busy} className="w-full">
-                  {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Send reset link
                 </Button>
               </form>
             </TabsContent>
