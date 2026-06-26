@@ -25,22 +25,23 @@ export function AppHeader({ subtitle, action }: { subtitle?: string; action?: Re
       <div className="flex items-center gap-2">
         {action}
         <Button
-        size="sm"
-        variant="outline"
-        className="border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800"
-        disabled={isSigningOut}
-        onClick={async () => {
-          setIsSigningOut(true);
-          try {
-            await signOut();
-            navigate({ to: "/auth", replace: true });
-          } finally {
-            setIsSigningOut(false);
-          }
-        }}
-      >
-        <LogOut className="mr-2 h-4 w-4" /> Logout
-      </Button>
+          size="sm"
+          variant="outline"
+          className="border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800"
+          disabled={isSigningOut}
+          onClick={async () => {
+            setIsSigningOut(true);
+            try {
+              await signOut();
+              navigate({ to: "/auth", replace: true });
+            } finally {
+              setIsSigningOut(false);
+            }
+          }}
+        >
+          <LogOut className="mr-2 h-4 w-4" /> Logout
+        </Button>
+      </div>
     </header>
   );
 }
