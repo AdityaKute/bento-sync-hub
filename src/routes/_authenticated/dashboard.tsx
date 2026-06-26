@@ -27,22 +27,10 @@ const SLOT_CLASSES: Record<number, string> = {
   5: "lg:col-span-2",
   6: "lg:col-span-3",
 };
-const MAX_FILE_SIZE = 1_500_000;
+const MAX_FILE_SIZE = 1_000_000;
 const STORAGE_BUCKET = "user-uploads";
 const ALLOWED_FILES = /\.(jpg|jpeg|png)$/i;
-const ALLOWED_MIME = new Set([
-  "image/jpeg",
-  "image/png",
-  "application/pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "text/plain",
-  "text/csv",
-  "application/vnd.ms-excel",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "application/vnd.ms-powerpoint",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-]);
+const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/jpg"]);
 
 type UserFilesRow = {
   id: string;
@@ -66,7 +54,7 @@ function Dashboard() {
   const [signed, setSigned] = useState<Record<number, string>>({});
   const [saving, setSaving] = useState(false);
   const [nameDialogOpen, setNameDialogOpen] = useState(false);
-  const [newDisplayName, setNewDisplayName] = useState(profile?.display_name ?? "");
+  const displayNameRef = useRef<HTMLInputElement | null>(null);
   const [updatingName, setUpdatingName] = useState(false);
 
   const isAllowedAdmin =
@@ -118,13 +106,16 @@ function Dashboard() {
   }, [user]);
 
   useEffect(() => {
-    setNewDisplayName(profile?.display_name ?? "");
-  }, [profile?.display_name]);
+    if (nameDialogOpen && displayNameRef.current) {
+      displayNameRef.current.value = profile?.display_name ?? "";
+    }
+  }, [nameDialogOpen, profile?.display_name]);
 
   const handleUpdateDisplayName = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    if (!newDisplayName.trim()) {
+    const nextDisplayName = displayNameRef.current?.value ?? "";
+    if (!nextDisplayName.trim()) {
       toast.error("Please enter a valid display name.");
       return;
     }
@@ -133,7 +124,7 @@ function Dashboard() {
     try {
       const { error } = await supabase
         .from("profiles")
-        .update({ display_name: newDisplayName.trim() })
+        .update({ display_name: nextDisplayName.trim() })
         .eq("id", user.id);
 
       if (error) throw error;
@@ -164,11 +155,11 @@ function Dashboard() {
     try {
       const hasAllowedExt = ALLOWED_FILES.test(file.name);
       const hasAllowedMime = ALLOWED_MIME.has(file.type) || file.type === "";
-      if (!hasAllowedExt || !hasAllowedMime) {
-        throw new Error("Only JPG, PNG, PDF, and common document formats are allowed.");
+      if (!hasAllowedExt && !hasAllowedMime) {
+        throw new Error("Only JPG, PNG, and JPEG files are allowed.");
       }
       if (file.size > MAX_FILE_SIZE) {
-        throw new Error("Each file must be smaller than 1.5 MB.");
+        throw new Error("Each file must be smaller than 1 MB.");
       }
       setPending((prev) => ({ ...prev, [slot]: file }));
       setPreviews((prev) => ({
@@ -240,8 +231,8 @@ function Dashboard() {
                   <Input
                     id="display-name"
                     placeholder="Last Name, First Name, Middle Name"
-                    value={newDisplayName}
-                    onChange={(e) => setNewDisplayName(e.target.value)}
+                    ref={displayNameRef}
+                    defaultValue={profile?.display_name ?? ""}
                     autoFocus
                   />
                 </div>
@@ -260,7 +251,7 @@ function Dashboard() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">Your document slots</h2>
-          <p className="text-sm text-muted-foreground">Upload up to 6 files. Each file is limited to 1.5 MB.</p>
+          <p className="text-sm text-muted-foreground">Upload up to 6 files. Each file is limited to 1 MB.</p>
           <p className="mt-1 inline-flex items-center rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-xs font-medium text-muted-foreground">
             Accepted formats: JPG, PNG, JPEG.
           </p>
@@ -332,6 +323,17 @@ function SlotCard({
   const fileName = storedPath?.split("/").pop() ?? "No file yet";
   const isImage = /\.(jpg|jpeg|png)$/i.test(fileName);
 
+  const handleOpenPicker = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    inputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    onPick(event.target.files?.[0] ?? null);
+    event.target.value = "";
+  };
+
   if (loading) {
     return <Skeleton className={`h-full min-h-[200px] w-full rounded-2xl ${className ?? ""}`} />;
   }
@@ -341,9 +343,9 @@ function SlotCard({
       <input
         ref={inputRef}
         type="file"
-        accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.txt,.csv,.xls,.xlsx,.ppt,.pptx"
-        className="hidden"
-        onChange={(e) => onPick(e.target.files?.[0] ?? null)}
+        accept="image/jpeg,image/png,image/jpg,.jpg,.jpeg,.png"
+        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+        onChange={handleFileChange}
       />
       {previewUrl && isImage ? (
         <img src={previewUrl} alt={`Slot ${slot}`} className="absolute inset-0 h-full w-full object-cover opacity-80" />
@@ -376,7 +378,7 @@ function SlotCard({
               </div>
             ) : null}
           </div>
-          <Button size="sm" variant={uploaded ? "secondary" : "default"} onClick={() => inputRef.current?.click()}>
+          <Button size="sm" type="button" variant={uploaded ? "secondary" : "default"} onClick={handleOpenPicker}>
             {uploaded ? (<><RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Replace</>) : (<><Upload className="mr-1.5 h-3.5 w-3.5" /> Upload</>)}
           </Button>
         </div>
