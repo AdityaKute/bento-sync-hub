@@ -150,4 +150,4 @@ function AuthPage() {
       </div>
     </div>
   );
-}
+
